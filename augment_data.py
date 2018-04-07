@@ -20,14 +20,14 @@ IMG_WIDTH = 128
 IMG_HEIGHT = 128
 IMG_CHANNELS = 3
 TRAIN_PATH = 'data/stage1_train/'
-AUGMENT_PATH = 'data/stage1_train_aug/'
+AUGMENT_PATH = 'data/stage1_train_aug_1/'
 AUGS = 9
 
 
 warnings.filterwarnings('ignore', category=UserWarning, module='skimage')
-seed = 42
-random.seed = seed
-np.random.seed = seed
+#seed = 42
+#random.seed = seed
+#np.random.seed = seed
 
 train_ids = next(os.walk(TRAIN_PATH))[1]
 
@@ -75,6 +75,7 @@ os.mkdir(AUGMENT_PATH + 'cluster_2/images')
 os.mkdir(AUGMENT_PATH + 'cluster_2/masks')
 
 for ix in range(len(train_ids)):
+  if ix % 10 == 0: print(ix)
   cluster = cluster_dict[train_ids[ix]]
   path = AUGMENT_PATH + 'cluster_' + cluster
   images = break_image(resize_image(X_train_no_resize[ix]))

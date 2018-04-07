@@ -29,14 +29,15 @@ import tensorflow as tf
 IMG_WIDTH = 256
 IMG_HEIGHT = 256
 IMG_CHANNELS = 3
-cluster = '2'
+cluster = '0'
+attempt = '1'
 TRAIN_PATH = 'data/stage1_train_aug/cluster_' + cluster +'/'
 
 
 warnings.filterwarnings('ignore', category=UserWarning, module='skimage')
-seed = 42
-random.seed = seed
-np.random.seed = seed
+#seed = 42
+#random.seed = seed
+#np.random.seed = seed
 
 # Define IoU metric, according to kaggle this isnt correct
 def mean_iou(y_true, y_pred):
@@ -137,7 +138,7 @@ model.summary()
 
 # Fit model
 earlystopper = EarlyStopping(patience=5, verbose=1)
-checkpointer = ModelCheckpoint('model-cluster-' + cluster + '-0.h5', verbose=1, save_best_only=True)
+checkpointer = ModelCheckpoint('model-cluster-' + cluster + '-' + attempt + '0.h5', verbose=1, save_best_only=True)
 results = model.fit(X_train, Y_train, validation_split=0.1, batch_size=16, epochs=10,
                     callbacks=[earlystopper, checkpointer])
 

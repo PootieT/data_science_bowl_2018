@@ -74,6 +74,8 @@ def get_images_details(image_ids):
     details.append(info)
   return details
 
+train_image_ids = image_ids_in(STAGE1_TRAIN)
+
 META_COLS = [IMAGE_ID, IMAGE_WIDTH, IMAGE_WEIGHT, TOTAL_MASK]
 COLS = META_COLS + [HSV_DOMINANT]
 details = get_images_details(train_image_ids)
