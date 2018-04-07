@@ -13,6 +13,7 @@ from itertools import chain
 from skimage.io import imread, imshow, imread_collection, concatenate_images
 from skimage.transform import resize
 from skimage.morphology import label
+from data_utils import resize_image, break_image, make_images, prob_to_rles
 
 from keras.models import Model, load_model
 from keras.layers import Input
@@ -25,12 +26,13 @@ from keras import backend as K
 
 import tensorflow as tf
 
+cluster = '2'
+threshold = 0.5
+
 # Set some parameters
 IMG_WIDTH = 256
 IMG_HEIGHT = 256
 IMG_CHANNELS = 3
-#cluster = '2'
-#TRAIN_PATH = 'data/stage1_train_aug/cluster_' + cluster +'/'
 TEST_PATH = 'data/stage1_test/'
 
 
@@ -39,29 +41,6 @@ seed = 42
 random.seed = seed
 np.random.seed = seed
 
-def resize_image(image):
-    pad_width = 256 - np.shape(image)[1] % 256 if np.shape(image)[1] != 256 else 0
-    pad_height = 256 - np.shape(image)[0] % 256 if np.shape(image)[0] != 256 else 0
-    new_image = np.pad(image, ((0,pad_height), (0,pad_width), (0,0)), mode='reflect')
-    return new_image
-
-def break_image(image):
-    images = []
-    num_col = int(np.shape(image)[0] / 256)
-    num_row = int(np.shape(image)[1] / 256)
-    for i in range(num_col):
-        for j in range(num_row):
-            images.append(image[i*256:(i+1)*256,j*256:(j+1)*256,:])
-    return images
-
-def make_images(images, shape):
-    num_col = int(shape[0] / 256 + 1) if shape[0] != 256 else 1 
-    num_row = int(shape[1] / 256 + 1) if shape[1] != 256 else 1 
-    new_image = np.zeros((num_col*256, num_row*256, shape[2]))
-    for i in range(num_col):
-        for j in range(num_row):
-            new_image[i*256:(i+1)*256,j*256:(j+1)*256,:] = images[i*num_row+j]
-    return new_image[:shape[0], :shape[1],:]
 
 # Define IoU metric, according to kaggle this isnt correct
 def mean_iou(y_true, y_pred):
@@ -74,23 +53,6 @@ def mean_iou(y_true, y_pred):
             score = tf.identity(score)
         prec.append(score)
     return K.mean(K.stack(prec), axis=0)
-
-
-def rle_encoding(x):
-    dots = np.where(x.T.flatten() == 1)[0]
-    run_lengths = []
-    prev = -2
-    for b in dots:
-        if (b>prev+1): run_lengths.extend((b + 1, 0))
-        run_lengths[-1] += 1
-        prev = b
-    return run_lengths
-
-def prob_to_rles(x, cutoff=0.5):
-    lab_img = label(x > cutoff)
-    for i in range(1, lab_img.max() + 1):
-        yield rle_encoding(lab_img == i)
-
 
 
 
@@ -111,11 +73,7 @@ with open('clusters_test.txt','r') as f:
         if temp[1] != 'image_id':
             cluster_dict[temp[1]] = temp[2].strip()
 
-
-threshold = 0.5
 masks_dict = {}
-
-cluster = '2'
 model = load_model('model-cluster-'+ cluster +'-0.h5', custom_objects={'mean_iou': mean_iou})
 new_test_ids = []
 rles = []
@@ -133,7 +91,7 @@ for n, id_ in tqdm(enumerate(test_ids), total=len(test_ids)):
         preds_val = model.predict_on_batch(temp_image)
         masks.append(preds_val)
     mask = make_images(masks, (original_shape[0], original_shape[1],1))
-    rle = list(prob_to_rles(mask))
+    rle = list(prob_to_rles(mask, cutoff = threshold))
     rles.extend(rle)
     new_test_ids.extend([id_] * len(rle))
 
@@ -142,11 +100,3 @@ sub = pd.DataFrame()
 sub['ImageId'] = new_test_ids
 sub['EncodedPixels'] = pd.Series(rles).apply(lambda x: ' '.join(str(y) for y in x))
 sub.to_csv('sub-cluster-'+ cluster +'-1.csv', index=False)
-
-
-#plt.figure()
-#plt.subplot(2,2,1)
-#plt.imshow(X_test_no_resize[n])
-#plt.subplot(2,2,2)
-#plt.imshow(np.squeeze(mask))
-#plt.show()
